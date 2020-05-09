@@ -1,20 +1,20 @@
-﻿using FluentAssertions;
+﻿using System.Collections.Generic;
+using FluentAssertions;
 using Moq;
-using System.Collections.Generic;
 using Xunit;
 
-namespace Mimic.Tests
+namespace UniversalAdapter.Tests
 {
     public class InterfaceTests
     {
-        private Mock<IMimicAdapter> Mock { get; }
+        private Mock<IInterfaceHandler> Mock { get; }
 
         public InterfaceTests()
         {
-            Mock = new Mock<IMimicAdapter>();
+            Mock = new Mock<IInterfaceHandler>();
         }
 
-        private T Mimic<T>() => new MimicBuilder().Mimic<T>(Mock.Object);
+        private T Create<T>() => (T) new UniversalAdapterFactory().Create(typeof(T), Mock.Object);
 
         public interface IHaveReadOnlyProperty { string Foo { get; } }
         [Fact]
@@ -26,7 +26,7 @@ namespace Mimic.Tests
                 .Setup(m => m.GetProperty(prop))
                 .Returns(() => "expected");
 
-            Mimic<IHaveReadOnlyProperty>().Foo.Should().Be("expected");
+            Create<IHaveReadOnlyProperty>().Foo.Should().Be("expected");
         }
 
         public interface IHaveWriteOnlyProperty { string Foo { set; } }
@@ -39,7 +39,7 @@ namespace Mimic.Tests
                 .Setup(m => m.SetProperty(prop, "expected"))
                 .Verifiable();
 
-            Mimic<IHaveWriteOnlyProperty>().Foo = "expected";
+            Create<IHaveWriteOnlyProperty>().Foo = "expected";
 
             Mock.Verify();
         }
@@ -58,7 +58,7 @@ namespace Mimic.Tests
                 .Setup(m => m.SetProperty(prop, "expected 2"))
                 .Verifiable();
 
-            var adapter = Mimic<IHaveReadWriteProperty>();
+            var adapter = Create<IHaveReadWriteProperty>();
 
             adapter.Foo.Should().Be("expected 1");
 
@@ -77,7 +77,7 @@ namespace Mimic.Tests
                 .Setup(m => m.Method(method, new object[] { }))
                 .Verifiable();
 
-            Mimic<IHaveMethodWithoutReturnTypeOrParameters>().Foo();
+            Create<IHaveMethodWithoutReturnTypeOrParameters>().Foo();
 
             Mock.Verify();
         }
@@ -93,7 +93,7 @@ namespace Mimic.Tests
                 .Setup(m => m.Method(method, new object[] { "example", 123 }))
                 .Verifiable();
 
-            Mimic<IHaveMethodWithoutReturnTypeButWithParameters>().Foo("example", 123);
+            Create<IHaveMethodWithoutReturnTypeButWithParameters>().Foo("example", 123);
 
             Mock.Verify();
         }
@@ -109,7 +109,7 @@ namespace Mimic.Tests
                 .Setup(m => m.Method(method, new object[] { "example", 123 }))
                 .Returns("expected");
 
-            var adapter = Mimic<IHaveMethodWithReturnTypeAndParameters>();
+            var adapter = Create<IHaveMethodWithReturnTypeAndParameters>();
 
             adapter.Foo("example", 123).Should().Be("expected");
         }
@@ -125,7 +125,7 @@ namespace Mimic.Tests
                 .Setup(m => m.Method(method, new object[] { "example" }))
                 .Returns("expected");
 
-            var adapter = Mimic<IHaveMethodWithGenericTypeReturnTypeAndParameters>();
+            var adapter = Create<IHaveMethodWithGenericTypeReturnTypeAndParameters>();
 
             adapter.Foo("example").Should().Be("expected");
         }
@@ -145,7 +145,7 @@ namespace Mimic.Tests
                 .Setup(m => m.Method(method, new object[] { 123, "example" }))
                 .Returns(456);
 
-            var adapter = Mimic<IHaveGenericTypeAndMethodWithReturnTypeAndParameters<int>>();
+            var adapter = Create<IHaveGenericTypeAndMethodWithReturnTypeAndParameters<int>>();
 
             adapter.Foo(123, "example").Should().Be(456);
         }
@@ -177,10 +177,32 @@ namespace Mimic.Tests
                 .Returns(result);
 
             var adapter =
-                Mimic<IHaveGenericTypeAndGenericMethodWithReturnTypeAndParameters<
+                Create<IHaveGenericTypeAndGenericMethodWithReturnTypeAndParameters<
                     ShouldAdaptGenericTypeAndGenericMethodWithReturnTypeAndParametersCorrectlyStruct, string>>();
 
             adapter.Foo<List<int>>(x).Should().BeEquivalentTo(result);
+        }
+
+        public interface IHaveGenerics<in T, out TProp>
+        {
+            TResult Foo<TResult>(T foo) where TResult : ICollection<int>;
+            TProp Bar { get; }
+        }
+        [Fact]
+        public void ShouldCreateDifferentImplementationsForGenericTypes()
+        {
+            var builder = new UniversalAdapterFactory();
+
+            var adapter1 = builder.Create(typeof(IHaveGenerics<long, string>), Mock.Object);
+            var adapter2 = builder.Create(typeof(IHaveGenerics<long, string>), Mock.Object);
+
+            var adapter3 = builder.Create(typeof(IHaveGenerics<string, long>), Mock.Object);
+            var adapter4 = builder.Create(typeof(IHaveGenerics<byte[], bool>), Mock.Object);
+
+            adapter1.GetType().Should().Be(adapter2.GetType());
+
+            adapter2.GetType().Should().NotBe(adapter3.GetType());
+            adapter3.GetType().Should().NotBe(adapter4.GetType());
         }
     }
 }

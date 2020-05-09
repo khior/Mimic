@@ -4,48 +4,36 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 
-namespace Mimic
+namespace UniversalAdapter
 {
-    public sealed class MimicBuilder
+    internal sealed class InterfaceAdapterActivatorFactory
     {
-        private readonly string _id = Guid.NewGuid().ToString("N");
+        private readonly ModuleBuilder _module;
 
-        private readonly Lazy<ModuleBuilder> _module;
-
-        public MimicBuilder()
+        internal InterfaceAdapterActivatorFactory(ModuleBuilder module)
         {
-            _module = new Lazy<ModuleBuilder>
-            (() =>
-                AssemblyBuilder
-                    .DefineDynamicAssembly(new AssemblyName($"MimicAssembly_{_id}"), AssemblyBuilderAccess.Run)
-                    .DefineDynamicModule($"MimicModule_{_id}")
-            );
+            _module = module;
         }
 
-        public T Mimic<T>(IMimicAdapter adapter)
+        internal InterfaceAdapterActivator Create(Type interfaceType)
         {
-            return (T) Mimic(typeof(T), adapter);
-        }
+            if (interfaceType == null)
+                throw new ArgumentNullException(nameof(interfaceType));
+            if (interfaceType.IsInterface == false)
+                throw new ArgumentException($"{interfaceType.Name} is not an interface", nameof(interfaceType));
 
-        public object Mimic(Type originalType, IMimicAdapter adapter)
-        {
-            if (originalType.IsInterface == false)
-            {
-                throw new InvalidOperationException("Only interfaces can be mimicked");
-            }
-
-            var typeBuilder = _module.Value.DefineType($"{adapter.GetType().Name}_{originalType.Name}_Mimic",
+            var typeBuilder = _module.DefineType($"Adapter_{interfaceType.Name}_{interfaceType.GetHashCode()}",
                 TypeAttributes.Public, typeof(object));
 
             // Implement interface
-            typeBuilder.AddInterfaceImplementation(originalType);
+            typeBuilder.AddInterfaceImplementation(interfaceType);
 
             // Implement copy any generic types
-            if (originalType.IsGenericType)
+            if (interfaceType.IsGenericType)
             {
                 typeBuilder.DefineGenericParameters
                 (
-                    originalType
+                    interfaceType
                         .GetGenericArguments()
                         .Select(a => a.Name)
                         .ToArray()
@@ -53,20 +41,20 @@ namespace Mimic
             }
 
             // Initialise field to hold reference to injected adapter
-            var fieldName = "_" + nameof(IMimicAdapter).Substring(1).ToCamelCase();
-            var field = typeBuilder.DefineField(fieldName, typeof(IMimicAdapter), FieldAttributes.Private);
+            var fieldName = "_" + nameof(IInterfaceHandler).Substring(1).ToCamelCase();
+            var field = typeBuilder.DefineField(fieldName, typeof(IInterfaceHandler), FieldAttributes.Private);
 
             // Get references to properties
-            var properties = originalType.GetProperties();
+            var properties = interfaceType.GetProperties();
 
             // Build a list of the methods that implement those properties
             var propertyMethods = properties
-                .SelectMany(p => new[] {p.GetMethod, p.SetMethod})
+                .SelectMany(p => new[] { p.GetMethod, p.SetMethod })
                 .Where(x => x != null)
                 .ToList();
 
             // Get all methods, except those that implement property getters and setters
-            var methods = originalType.GetMethods()
+            var methods = interfaceType.GetMethods()
                 .Where(x => propertyMethods.Contains(x) == false)
                 .ToArray();
 
@@ -77,30 +65,33 @@ namespace Mimic
 
             ImplementConstructor(typeBuilder, field, allFields);
 
-            var generatedTypeParameters = new List<object> {adapter};
-            generatedTypeParameters.AddRange(properties);
-            generatedTypeParameters.AddRange(methods);
-            var args = generatedTypeParameters.ToArray();
-
             // Return the adapter instance
             var generatedType = typeBuilder.CreateType();
             if (generatedType.ContainsGenericParameters)
             {
-                generatedType = generatedType.MakeGenericType(originalType.GenericTypeArguments);
+                generatedType = generatedType.MakeGenericType(interfaceType.GenericTypeArguments);
             }
 
-            return Activator.CreateInstance(generatedType, args);
+            var args = new List<object>(properties.Length + methods.Length);
+            args.AddRange(properties);
+            args.AddRange(methods);
+
+            return new InterfaceAdapterActivator(generatedType, args);
         }
 
-        private static ConstructorBuilder ImplementConstructor(TypeBuilder type, FieldInfo adapterField,
-            FieldInfo[] fields)
+        /// <summary>
+        /// Creates constructor with the following signature:
+        /// Ctor([PropertyInfo p1, ... PropertyInfo pN,] [MethodInfo m1, ... MethodInfo pN,] IInterfaceHandler adapter)
+        /// </summary>
+        private static void ImplementConstructor(
+            TypeBuilder type, FieldInfo adapterField, FieldInfo[] fields)
         {
             var parameterTypes = new Type[fields.Length + 1];
-            parameterTypes[0] = typeof(IMimicAdapter);
             for (var i = 0; i < fields.Length; i++)
             {
-                parameterTypes[i + 1] = fields[i].FieldType;
+                parameterTypes[i] = fields[i].FieldType;
             }
+            parameterTypes[fields.Length] = typeof(IInterfaceHandler);
 
             var ctor = type.DefineConstructor(
                 MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.SpecialName |
@@ -112,35 +103,36 @@ namespace Mimic
             il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Call, baseCtor);
 
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(OpCodes.Stfld, adapterField);
-
             for (var i = 0; i < fields.Length; i++)
             {
                 il.Emit(OpCodes.Ldarg_0);
-                il.Emit(OpCodes.Ldarg, i + 2);
+                il.Emit(OpCodes.Ldarg, i + 1);
                 il.Emit(OpCodes.Stfld, fields[i]);
             }
 
-            il.Emit(OpCodes.Ret);
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Ldarg, fields.Length + 1);
+            il.Emit(OpCodes.Stfld, adapterField);
 
-            return ctor;
+            il.Emit(OpCodes.Ret);
         }
 
-        private static List<FieldInfo> ImplementPropertyAdapters(TypeBuilder type, FieldBuilder adapterField,
-            PropertyInfo[] properties)
+        /// <summary>
+        /// Implement adapters for all getters and setters on properties
+        /// </summary>
+        private static List<FieldInfo> ImplementPropertyAdapters(
+            TypeBuilder type, FieldBuilder adapterField, PropertyInfo[] properties)
         {
             var getProperty =
-                typeof(IMimicAdapter).GetMethod(nameof(IMimicAdapter.GetProperty), new[] {typeof(PropertyInfo)});
-            var setProperty = typeof(IMimicAdapter).GetMethod(nameof(IMimicAdapter.SetProperty),
-                new[] {typeof(PropertyInfo), typeof(object)});
+                typeof(IInterfaceHandler).GetMethod(nameof(IInterfaceHandler.GetProperty), new[] { typeof(PropertyInfo) });
+            var setProperty = typeof(IInterfaceHandler).GetMethod(nameof(IInterfaceHandler.SetProperty),
+                new[] { typeof(PropertyInfo), typeof(object) });
 
             var fields = new List<FieldInfo>();
             foreach (var p in properties)
             {
                 // Create a static field to store the PropertyInfo so it doesn't have to be reflected at runtime
-                var field = type.DefineField($"_{p.Name.ToLower()}_{p.GetHashCode()}_{nameof(PropertyInfo)}",
+                var field = type.DefineField($"_{p.Name.ToCamelCase()}_{p.GetHashCode()}_{nameof(PropertyInfo)}",
                     typeof(PropertyInfo), FieldAttributes.Private);
 
                 var property = type.DefineProperty(p.Name, PropertyAttributes.None, p.PropertyType, new Type[0]);
@@ -177,7 +169,7 @@ namespace Mimic
                 {
                     var setter = type.DefineMethod("set_" + p.Name,
                         MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.Virtual, null,
-                        new Type[] {p.PropertyType});
+                        new Type[] { p.PropertyType });
                     var il = setter.GetILGenerator(512);
 
                     var obj = il.DeclareLocal(typeof(object));
@@ -206,11 +198,14 @@ namespace Mimic
             return fields;
         }
 
-        private static List<FieldInfo> ImplementMethodAdapters(TypeBuilder type, FieldBuilder adapterField,
-            MethodInfo[] methods)
+        /// <summary>
+        /// Implement adapters for all methods
+        /// </summary>
+        private static List<FieldInfo> ImplementMethodAdapters(
+            TypeBuilder type, FieldBuilder adapterField, MethodInfo[] methods)
         {
-            var sendMethod = typeof(IMimicAdapter).GetMethod(nameof(IMimicAdapter.Method),
-                new[] {typeof(MethodInfo), typeof(object[])});
+            var sendMethod = typeof(IInterfaceHandler).GetMethod(nameof(IInterfaceHandler.Method),
+                new[] { typeof(MethodInfo), typeof(object[]) });
 
             var fields = new List<FieldInfo>();
             foreach (var m in methods)

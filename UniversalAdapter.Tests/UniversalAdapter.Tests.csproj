@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Mimic\Mimic.csproj" />
+    <ProjectReference Include="..\UniversalAdapter\UniversalAdapter.csproj" />
   </ItemGroup>
 
 </Project>

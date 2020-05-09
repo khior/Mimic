@@ -1,8 +1,11 @@
 ﻿using System.Reflection;
 
-namespace Mimic
+namespace UniversalAdapter
 {
-    public interface IMimicAdapter
+    /// <summary>
+    /// I
+    /// </summary>
+    public interface IInterfaceHandler
     {
         object Method(MethodInfo methodInfo, object[] parameters);
         object GetProperty(PropertyInfo propertyInfo);

@@ -1,4 +1,4 @@
-﻿namespace Mimic
+﻿namespace UniversalAdapter
 {
     internal static class StringExtension
     {
