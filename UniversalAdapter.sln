@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UniversalAdapter", "Univers
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UniversalAdapter.Tests", "UniversalAdapter.Tests\UniversalAdapter.Tests.csproj", "{FD8DC37B-7ABC-4971-9C38-7CC03AE13956}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UniversalAdapter.TestHarness", "UniversalAdapter.TestHarness\UniversalAdapter.TestHarness.csproj", "{C12920A2-6EE2-4467-B300-F853292AB14B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{FD8DC37B-7ABC-4971-9C38-7CC03AE13956}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FD8DC37B-7ABC-4971-9C38-7CC03AE13956}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FD8DC37B-7ABC-4971-9C38-7CC03AE13956}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C12920A2-6EE2-4467-B300-F853292AB14B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C12920A2-6EE2-4467-B300-F853292AB14B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C12920A2-6EE2-4467-B300-F853292AB14B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C12920A2-6EE2-4467-B300-F853292AB14B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

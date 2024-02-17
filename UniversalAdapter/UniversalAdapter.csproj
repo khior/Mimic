@@ -16,7 +16,6 @@
     <AssemblyName>UniversalAdapter</AssemblyName>
     <RootNamespace>UniversalAdapter</RootNamespace>
     <LangVersion>12</LangVersion>
-    <Nullable>enable</Nullable>
   </PropertyGroup>
 
 </Project>

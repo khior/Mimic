@@ -10,18 +10,18 @@ namespace UniversalAdapter
         /// <summary>
         /// Creates an adapter for the given interface, using the handler provided.
         /// </summary>
-        /// <param name="interfaceType">The Type of the interface to implement</param>
-        /// <param name="adapter">The handler that will be invoked by the adapter</param>
-        /// <returns>An adapter implementation for the given interface Type</returns>
-        object Create(Type interfaceType, IInterfaceAdapter adapter);
-
-        /// <summary>
-        /// Creates an adapter for the given interface, using the handler provided.
-        /// </summary>
         /// <typeparam name="T">The Type of the interface to implement</typeparam>
         /// <param name="adapter">The handler that will be invoked by the adapter</param>
         /// <returns>An adapter implementation for the given interface T</returns>
         T Create<T>(IInterfaceAdapter adapter);
+        
+        /// <summary>
+        /// Creates an adapter for the given interface, using the handler provided.
+        /// </summary>
+        /// <param name="interfaceType">The Type of the interface to implement</param>
+        /// <param name="adapter">The handler that will be invoked by the adapter</param>
+        /// <returns>An adapter implementation for the given interface Type</returns>
+        object Create(Type interfaceType, IInterfaceAdapter adapter);
     }
 
     public sealed class UniversalAdapterFactory : IUniversalAdapterFactory
@@ -41,6 +41,12 @@ namespace UniversalAdapter
             _activatorFactory = new InterfaceAdapterActivatorFactory(module);
             _activatorMap = new Dictionary<Type, InterfaceAdapterActivator>();
         }
+        
+        /// <inheritdoc />
+        public T Create<T>(IInterfaceAdapter adapter)
+        {
+            return (T)Create(typeof(T), adapter);
+        }
 
         /// <inheritdoc />
         public object Create(Type interfaceType, IInterfaceAdapter adapter)
@@ -53,12 +59,6 @@ namespace UniversalAdapter
             }
 
             return activator.CreateInstance(adapter);
-        }
-        
-        /// <inheritdoc />
-        public T Create<T>(IInterfaceAdapter adapter)
-        {
-            return (T)Create(typeof(T), adapter);
         }
     }
 }
