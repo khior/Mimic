@@ -5,7 +5,7 @@ namespace UniversalAdapter
     /// <summary>
     /// I
     /// </summary>
-    public interface IInterfaceHandler
+    public interface IInterfaceAdapter
     {
         object Method(MethodInfo methodInfo, object[] parameters);
         object GetProperty(PropertyInfo propertyInfo);

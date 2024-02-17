@@ -7,11 +7,11 @@ namespace UniversalAdapter.Tests
 {
     public class ClassTests
     {
-        private Mock<IInterfaceHandler> Mock { get; }
+        private Mock<IInterfaceAdapter> Mock { get; }
 
         public ClassTests()
         {
-            Mock = new Mock<IInterfaceHandler>();
+            Mock = new Mock<IInterfaceAdapter>();
         }
 
         public class ClassWithAMethod

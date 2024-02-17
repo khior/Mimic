@@ -41,8 +41,8 @@ namespace UniversalAdapter
             }
 
             // Initialise field to hold reference to injected adapter
-            var fieldName = "_" + nameof(IInterfaceHandler).Substring(1).ToCamelCase();
-            var field = typeBuilder.DefineField(fieldName, typeof(IInterfaceHandler), FieldAttributes.Private);
+            var fieldName = "_" + nameof(IInterfaceAdapter).Substring(1).ToCamelCase();
+            var field = typeBuilder.DefineField(fieldName, typeof(IInterfaceAdapter), FieldAttributes.Private);
 
             // Get references to properties
             var properties = interfaceType.GetProperties();
@@ -91,7 +91,7 @@ namespace UniversalAdapter
             {
                 parameterTypes[i] = fields[i].FieldType;
             }
-            parameterTypes[fields.Length] = typeof(IInterfaceHandler);
+            parameterTypes[fields.Length] = typeof(IInterfaceAdapter);
 
             var ctor = type.DefineConstructor(
                 MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.SpecialName |
@@ -124,8 +124,8 @@ namespace UniversalAdapter
             TypeBuilder type, FieldBuilder adapterField, PropertyInfo[] properties)
         {
             var getProperty =
-                typeof(IInterfaceHandler).GetMethod(nameof(IInterfaceHandler.GetProperty), new[] { typeof(PropertyInfo) });
-            var setProperty = typeof(IInterfaceHandler).GetMethod(nameof(IInterfaceHandler.SetProperty),
+                typeof(IInterfaceAdapter).GetMethod(nameof(IInterfaceAdapter.GetProperty), new[] { typeof(PropertyInfo) });
+            var setProperty = typeof(IInterfaceAdapter).GetMethod(nameof(IInterfaceAdapter.SetProperty),
                 new[] { typeof(PropertyInfo), typeof(object) });
 
             var fields = new List<FieldInfo>();
@@ -135,13 +135,13 @@ namespace UniversalAdapter
                 var field = type.DefineField($"_{p.Name.ToCamelCase()}_{p.GetHashCode()}_{nameof(PropertyInfo)}",
                     typeof(PropertyInfo), FieldAttributes.Private);
 
-                var property = type.DefineProperty(p.Name, PropertyAttributes.None, p.PropertyType, new Type[0]);
+                var property = type.DefineProperty(p.Name, PropertyAttributes.None, p.PropertyType, Type.EmptyTypes);
 
                 if (p.CanRead)
                 {
                     var getter = type.DefineMethod("get_" + p.Name,
                         MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.Virtual,
-                        p.PropertyType, new Type[0]);
+                        p.PropertyType, Type.EmptyTypes);
 
                     var il = getter.GetILGenerator(512);
 
@@ -204,7 +204,7 @@ namespace UniversalAdapter
         private static List<FieldInfo> ImplementMethodAdapters(
             TypeBuilder type, FieldBuilder adapterField, MethodInfo[] methods)
         {
-            var sendMethod = typeof(IInterfaceHandler).GetMethod(nameof(IInterfaceHandler.Method),
+            var sendMethod = typeof(IInterfaceAdapter).GetMethod(nameof(IInterfaceAdapter.Method),
                 new[] { typeof(MethodInfo), typeof(object[]) });
 
             var fields = new List<FieldInfo>();

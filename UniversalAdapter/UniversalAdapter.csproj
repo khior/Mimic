@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <Company>UniversalAdapter</Company>
     <RepositoryUrl></RepositoryUrl>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
@@ -15,6 +15,8 @@
     <NeutralLanguage></NeutralLanguage>
     <AssemblyName>UniversalAdapter</AssemblyName>
     <RootNamespace>UniversalAdapter</RootNamespace>
+    <LangVersion>12</LangVersion>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
 </Project>

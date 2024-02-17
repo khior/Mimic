@@ -5,20 +5,22 @@ namespace UniversalAdapter
 {
     internal sealed class InterfaceAdapterActivator
     {
-        internal InterfaceAdapterActivator(Type interfaceAdapterType, IReadOnlyCollection<object> constructorArguments)
+        internal InterfaceAdapterActivator(Type interfaceAdapterType, List<object> constructorArguments)
         {
-            InterfaceAdapterType = interfaceAdapterType;
-            ConstructorArguments = constructorArguments;
+            _interfaceAdapterType = interfaceAdapterType;
+            _constructorArguments = constructorArguments;
         }
 
-        internal Type InterfaceAdapterType { get; }
-        internal IReadOnlyCollection<object> ConstructorArguments { get; }
+        private readonly Type _interfaceAdapterType;
+        private readonly List<object> _constructorArguments;
 
-        internal object CreateInstance(IInterfaceHandler adapter)
+        internal object CreateInstance(IInterfaceAdapter adapter)
         {
-            var paramsArray = new List<object>(ConstructorArguments) {adapter}.ToArray();
+            _constructorArguments.Add(adapter);
             
-            return Activator.CreateInstance(InterfaceAdapterType, paramsArray);
+            var paramsArray = _constructorArguments.ToArray();
+            
+            return Activator.CreateInstance(_interfaceAdapterType, paramsArray);
         }
     }
 }
