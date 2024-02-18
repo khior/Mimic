@@ -11,24 +11,27 @@ public class TestHarness(Bob bob, ILogger<TestHarness> log) : ITestHarness
 {
     public Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        log.LogInformation("Calling bob: {int}", bob.GetInt());
+        var i = bob.GetInt();
+        log.LogInformation("Calling bob with BaseInt:{BaseInt} Result:{int}", bob.BaseInt, i);
         return Task.CompletedTask;
     }
 }
 
 public interface IJeff
 {
-    int GetInt();
+    int BaseInt { get; set; }
     int GetInt(int x);
 }
 
 public class Jeff : IJeff
 {
-    public int GetInt() => 123;
-    public int GetInt(int x) => x + 3;
+    public int BaseInt { get; set; } = 3;
+
+    public int GetInt(int x) => x + BaseInt;
 }
 
 public class Bob(IJeff jeff)
 {
+    public int BaseInt => jeff.BaseInt;
     public int GetInt() => jeff.GetInt(100);
 }
