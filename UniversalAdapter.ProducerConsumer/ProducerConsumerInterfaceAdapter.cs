@@ -1,10 +1,8 @@
-using System;
 using System.Reflection;
-using System.Threading.Tasks;
 
-namespace UniversalAdapter;
+namespace UniversalAdapter.ProducerConsumer;
 
-public sealed class TaskPoolInterfaceAdapter<TImplementation> : IInterfaceAdapter
+public sealed class ProducerConsumerInterfaceAdapter<TImplementation> : IInterfaceAdapter
 {
     public T MethodValue<T>(MethodInfo methodInfo, object[] parameters)
     {

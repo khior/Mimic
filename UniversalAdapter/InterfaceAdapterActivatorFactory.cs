@@ -124,10 +124,10 @@ namespace UniversalAdapter
         private static List<FieldInfo> ImplementPropertyAdapters(
             TypeBuilder type, FieldBuilder adapterField, PropertyInfo[] properties)
         {
-            var getProperty =
-                typeof(IInterfaceAdapter).GetMethod(nameof(IInterfaceAdapter.GetProperty), new[] { typeof(PropertyInfo) });
-            var setProperty = typeof(IInterfaceAdapter).GetMethod(nameof(IInterfaceAdapter.SetProperty),
-                new[] { typeof(PropertyInfo), typeof(object) });
+            var getProperty = typeof(IInterfaceAdapter)
+                .GetMethod(nameof(IInterfaceAdapter.GetProperty), [typeof(PropertyInfo)]);
+            var setProperty = typeof(IInterfaceAdapter)
+                .GetMethod(nameof(IInterfaceAdapter.SetProperty), [typeof(PropertyInfo), typeof(object)]);
 
             var fields = new List<FieldInfo>();
             foreach (var p in properties)
@@ -157,8 +157,6 @@ namespace UniversalAdapter
                     il.Emit(OpCodes.Ldarg_0);
                     il.Emit(OpCodes.Ldfld, field);
                     il.EmitCall(OpCodes.Callvirt, toCall, null);
-                    if (p.PropertyType.IsValueType) il.Emit(OpCodes.Unbox_Any, p.PropertyType);
-                    if (p.PropertyType.IsClass) il.Emit(OpCodes.Castclass, p.PropertyType);
                     il.Emit(OpCodes.Stloc, ret.LocalIndex);
 
                     // Return value
@@ -176,7 +174,6 @@ namespace UniversalAdapter
                     var il = setter.GetILGenerator(512);
 
                     var obj = il.DeclareLocal(typeof(object));
-                    var ret = il.DeclareLocal(p.PropertyType);
 
                     il.Emit(OpCodes.Ldarg_1);
                     il.Emit(OpCodes.Stloc, obj.LocalIndex);

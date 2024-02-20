@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace UniversalAdapter.TestHarness;
+namespace UniversalAdapter.Auditing;
 
 public sealed class AuditingInterfaceAdapterFactory
 {

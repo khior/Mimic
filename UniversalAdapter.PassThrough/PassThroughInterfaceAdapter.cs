@@ -1,7 +1,6 @@
 using System.Reflection;
-using System.Threading.Tasks;
 
-namespace UniversalAdapter;
+namespace UniversalAdapter.PassThrough;
 
 public sealed class PassThroughInterfaceAdapter<TImplementation>(TImplementation implementation) : IInterfaceAdapter
 {

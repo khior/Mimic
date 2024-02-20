@@ -1,4 +1,4 @@
-namespace UniversalAdapter;
+namespace UniversalAdapter.PassThrough;
 
 public sealed class PassThroughInterfaceAdapterFactory
 {

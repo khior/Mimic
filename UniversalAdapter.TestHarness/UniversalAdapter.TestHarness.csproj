@@ -15,7 +15,8 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\UniversalAdapter\UniversalAdapter.csproj" />
+      <ProjectReference Include="..\UniversalAdapter.Auditing\UniversalAdapter.Auditing.csproj" />
+      <ProjectReference Include="..\UniversalAdapter.PassThrough\UniversalAdapter.PassThrough.csproj" />
     </ItemGroup>
 
     <ItemGroup>
