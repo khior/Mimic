@@ -1,21 +1,37 @@
 using System.Reflection;
+using System.Threading.Tasks;
 
 namespace UniversalAdapter;
 
-public sealed class PassThroughInterfaceAdapter<T>(T implementation) : IInterfaceAdapter
+public sealed class PassThroughInterfaceAdapter<TImplementation>(TImplementation implementation) : IInterfaceAdapter
 {
-    public object Method(MethodInfo methodInfo, object[] parameters)
+    public T MethodValue<T>(MethodInfo methodInfo, object[] parameters)
     {
-        return methodInfo.Invoke(implementation, parameters);
+        return (T)methodInfo.Invoke(implementation, parameters);
     }
 
-    public object GetProperty(PropertyInfo propertyInfo)
+    public void MethodVoid(MethodInfo methodInfo, object[] parameters)
     {
-        return propertyInfo.GetMethod?.Invoke(implementation, []);
+        methodInfo.Invoke(implementation, parameters);
     }
 
-    public object SetProperty(PropertyInfo propertyInfo, object parameter)
+    public T GetProperty<T>(PropertyInfo propertyInfo)
     {
-        return propertyInfo.SetMethod?.Invoke(implementation, [parameter]);
+        return (T)propertyInfo.GetMethod?.Invoke(implementation, []);
+    }
+
+    public void SetProperty(PropertyInfo propertyInfo, object parameter)
+    {
+        propertyInfo.SetMethod?.Invoke(propertyInfo, [parameter]);
+    }
+
+    public Task<T> MethodValueAsync<T>(MethodInfo methodInfo, object[] parameters)
+    {
+        return (Task<T>)methodInfo.Invoke(implementation, parameters);
+    }
+
+    public Task MethodVoidAsync(MethodInfo methodInfo, object[] parameters)
+    {
+        return (Task)methodInfo.Invoke(implementation, parameters);
     }
 }

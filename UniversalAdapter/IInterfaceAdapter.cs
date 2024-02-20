@@ -1,15 +1,15 @@
-﻿using System;
-using System.Reflection;
+﻿using System.Reflection;
+using System.Threading.Tasks;
 
 namespace UniversalAdapter
 {
-    /// <summary>
-    /// I
-    /// </summary>
     public interface IInterfaceAdapter
     {
-        object Method(MethodInfo methodInfo, object[] parameters);
-        object GetProperty(PropertyInfo propertyInfo);
-        object SetProperty(PropertyInfo propertyInfo, object parameter);
+        T MethodValue<T>(MethodInfo methodInfo, object[] parameters);
+        void MethodVoid(MethodInfo methodInfo, object[] parameters);
+        Task<T> MethodValueAsync<T>(MethodInfo methodInfo, object[] parameters);
+        Task MethodVoidAsync(MethodInfo methodInfo, object[] parameters);
+        T GetProperty<T>(PropertyInfo propertyInfo);
+        void SetProperty(PropertyInfo propertyInfo, object parameter);
     }
 }

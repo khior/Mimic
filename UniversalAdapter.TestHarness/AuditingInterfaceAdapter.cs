@@ -4,25 +4,43 @@ using Microsoft.Extensions.Logging;
 
 namespace UniversalAdapter.TestHarness;
 
-public sealed class AuditingInterfaceAdapter<T>(T implementation, ILogger<AuditingInterfaceAdapter<T>> log)
+public sealed class AuditingInterfaceAdapter<TImplementation>(TImplementation implementation, ILogger<AuditingInterfaceAdapter<TImplementation>> log)
     : IInterfaceAdapter
 {
-    public object? Method(MethodInfo methodInfo, object[] parameters)
+    public T MethodValue<T>(MethodInfo methodInfo, object[] parameters)
     {
-        log.LogInformation("Invoking method: {methodSignature}", methodInfo.GetSignature());
-        return methodInfo.Invoke(implementation, parameters);
+        log.LogInformation("Invoking MethodValue: {methodSignature}", methodInfo.GetSignature());
+        return (T)methodInfo.Invoke(implementation, parameters)!;
     }
 
-    public object? GetProperty(PropertyInfo propertyInfo)
+    public void MethodVoid(MethodInfo methodInfo, object[] parameters)
+    {
+        log.LogInformation("Invoking MethodVoid: {methodSignature}", methodInfo.GetSignature());
+        methodInfo.Invoke(implementation, parameters);
+    }
+
+    public Task<T> MethodValueAsync<T>(MethodInfo methodInfo, object[] parameters)
+    {
+        log.LogInformation("Invoking MethodValueAsync: {methodSignature}", methodInfo.GetSignature());
+        return (Task<T>)methodInfo.Invoke(implementation, parameters)!;
+    }
+
+    public Task MethodVoidAsync(MethodInfo methodInfo, object[] parameters)
+    {
+        log.LogInformation("Invoking MethodVoidAsync: {methodSignature}", methodInfo.GetSignature());
+        return (Task)methodInfo.Invoke(implementation, parameters)!;
+    }
+
+    public T GetProperty<T>(PropertyInfo propertyInfo)
     {
         log.LogInformation("Invoking getter: {methodSignature}", propertyInfo.GetSignature());
-        return propertyInfo.GetMethod?.Invoke(implementation, []);
+        return (T)propertyInfo.GetMethod?.Invoke(implementation, [])!;
     }
 
-    public object? SetProperty(PropertyInfo propertyInfo, object parameter)
+    public void SetProperty(PropertyInfo propertyInfo, object parameter)
     {
         log.LogInformation("Invoking setter: {methodSignature}", propertyInfo.GetSignature());
-        return propertyInfo.SetMethod?.Invoke(implementation, [parameter]);
+        propertyInfo.SetMethod?.Invoke(implementation, [parameter]);
     }
 }
 

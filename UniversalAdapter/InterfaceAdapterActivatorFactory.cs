@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Threading.Tasks;
 
 namespace UniversalAdapter
 {
@@ -97,7 +98,7 @@ namespace UniversalAdapter
                 MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.SpecialName |
                 MethodAttributes.RTSpecialName, CallingConventions.Standard, parameterTypes);
             var baseCtor = typeof(object).GetConstructor(
-                BindingFlags.Public | BindingFlags.FlattenHierarchy | BindingFlags.Instance, null, new Type[0], null);
+                BindingFlags.Public | BindingFlags.FlattenHierarchy | BindingFlags.Instance, null, Type.EmptyTypes, null);
 
             var il = ctor.GetILGenerator();
             il.Emit(OpCodes.Ldarg_0);
@@ -142,6 +143,8 @@ namespace UniversalAdapter
                     var getter = type.DefineMethod("get_" + p.Name,
                         MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.Virtual,
                         p.PropertyType, Type.EmptyTypes);
+                    
+                    var toCall = getProperty.MakeGenericMethod(p.PropertyType);
 
                     var il = getter.GetILGenerator(512);
 
@@ -153,7 +156,7 @@ namespace UniversalAdapter
                     il.Emit(OpCodes.Ldfld, adapterField);
                     il.Emit(OpCodes.Ldarg_0);
                     il.Emit(OpCodes.Ldfld, field);
-                    il.EmitCall(OpCodes.Callvirt, getProperty, null);
+                    il.EmitCall(OpCodes.Callvirt, toCall, null);
                     if (p.PropertyType.IsValueType) il.Emit(OpCodes.Unbox_Any, p.PropertyType);
                     if (p.PropertyType.IsClass) il.Emit(OpCodes.Castclass, p.PropertyType);
                     il.Emit(OpCodes.Stloc, ret.LocalIndex);
@@ -185,8 +188,7 @@ namespace UniversalAdapter
                     il.Emit(OpCodes.Ldfld, field);
                     il.Emit(OpCodes.Ldloc, obj.LocalIndex);
                     il.EmitCall(OpCodes.Callvirt, setProperty, null);
-                    il.Emit(OpCodes.Stloc, ret.LocalIndex);
-
+                    
                     il.Emit(OpCodes.Ret);
                     property.SetSetMethod(setter);
                     type.DefineMethodOverride(setter, p.GetSetMethod());
@@ -204,7 +206,16 @@ namespace UniversalAdapter
         private static List<FieldInfo> ImplementMethodAdapters(
             TypeBuilder type, FieldBuilder adapterField, MethodInfo[] methods)
         {
-            var sendMethod = typeof(IInterfaceAdapter).GetMethod(nameof(IInterfaceAdapter.Method),
+            var valueMethod = typeof(IInterfaceAdapter).GetMethod(nameof(IInterfaceAdapter.MethodValue),
+                new[] { typeof(MethodInfo), typeof(object[]) });
+            
+            var voidMethod = typeof(IInterfaceAdapter).GetMethod(nameof(IInterfaceAdapter.MethodVoid),
+                new[] { typeof(MethodInfo), typeof(object[]) });
+            
+            var valueMethodAsync = typeof(IInterfaceAdapter).GetMethod(nameof(IInterfaceAdapter.MethodValueAsync),
+                new[] { typeof(MethodInfo), typeof(object[]) });
+            
+            var voidMethodAsync = typeof(IInterfaceAdapter).GetMethod(nameof(IInterfaceAdapter.MethodVoidAsync),
                 new[] { typeof(MethodInfo), typeof(object[]) });
 
             var fields = new List<FieldInfo>();
@@ -216,6 +227,7 @@ namespace UniversalAdapter
 
                 var returnType = m.ReturnType;
                 var isVoidReturnType = returnType == typeof(void);
+                var isAsyncType = returnType.IsAssignableTo(typeof(Task));
 
                 var args = m.GetParameters();
                 var argTypes = args.Select(p => p.ParameterType).ToArray();
@@ -234,8 +246,22 @@ namespace UniversalAdapter
                 {
                     method.DefineParameter(i, args[i].Attributes, args[i].Name);
                 }
+                
+                MethodInfo toCall;
+                if (isAsyncType)
+                {
+                    toCall = returnType.IsGenericType 
+                        ? valueMethodAsync?.MakeGenericMethod(returnType.GenericTypeArguments[0]) 
+                        : voidMethodAsync;
+                }
+                else
+                {
+                    toCall = isVoidReturnType 
+                        ? voidMethod 
+                        : valueMethod?.MakeGenericMethod(returnType);
+                }
 
-                var il = method.GetILGenerator(512);
+                var il = method.GetILGenerator(1024);
 
                 // Define all variables that will be needed in this function
                 var arr = il.DeclareLocal(typeof(object[]));
@@ -257,21 +283,14 @@ namespace UniversalAdapter
 
                 il.Emit(OpCodes.Stloc, arr.LocalIndex);
 
-                // Call "Method"
+                // Call Method
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldfld, adapterField);
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldfld, field);
                 il.Emit(OpCodes.Ldloc, arr.LocalIndex);
-                il.EmitCall(OpCodes.Callvirt, sendMethod, null);
-                if (isVoidReturnType == false)
-                {
-                    if (returnType.IsGenericMethodParameter) il.Emit(OpCodes.Unbox_Any, returnType);
-                    else if (returnType.IsValueType) il.Emit(OpCodes.Unbox_Any, returnType);
-                    else if (returnType.IsClass) il.Emit(OpCodes.Castclass, returnType);
-                }
-
-                il.Emit(OpCodes.Stloc, ret.LocalIndex);
+                il.EmitCall(OpCodes.Callvirt, toCall, null);
+                if (isVoidReturnType == false) il.Emit(OpCodes.Stloc, ret.LocalIndex);
 
                 // Return value
                 if (isVoidReturnType == false) il.Emit(OpCodes.Ldloc, ret.LocalIndex);

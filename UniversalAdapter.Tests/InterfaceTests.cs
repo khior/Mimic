@@ -1,5 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Reflection;
+using System.Security.Cryptography.X509Certificates;
+using System.Threading.Tasks;
 using FluentAssertions;
 using Moq;
 using Xunit;
@@ -24,7 +26,7 @@ namespace UniversalAdapter.Tests
             var prop = typeof(IHaveReadOnlyProperty).GetProperty(nameof(IHaveReadOnlyProperty.Foo));
 
             Mock
-                .Setup(m => m.GetProperty(prop))
+                .Setup(m => m.GetProperty<string>(prop))
                 .Returns(() => "expected");
 
             Create<IHaveReadOnlyProperty>().Foo.Should().Be("expected");
@@ -52,7 +54,7 @@ namespace UniversalAdapter.Tests
             var prop = typeof(IHaveReadWriteProperty).GetProperty(nameof(IHaveReadWriteProperty.Foo));
 
             Mock
-                .Setup(m => m.GetProperty(prop))
+                .Setup(m => m.GetProperty<string>(prop))
                 .Returns(() => "expected 1");
 
             Mock
@@ -75,7 +77,7 @@ namespace UniversalAdapter.Tests
                 .GetMethod(nameof(IHaveMethodWithoutReturnTypeOrParameters.Foo));
 
             Mock
-                .Setup(m => m.Method(method, new object[] { }))
+                .Setup(m => m.MethodVoid(method, new object[] { }))
                 .Verifiable();
 
             Create<IHaveMethodWithoutReturnTypeOrParameters>().Foo();
@@ -91,7 +93,7 @@ namespace UniversalAdapter.Tests
                 .GetMethod(nameof(IHaveMethodWithoutReturnTypeButWithParameters.Foo));
 
             Mock
-                .Setup(m => m.Method(method, new object[] { "example", 123 }))
+                .Setup(m => m.MethodVoid(method, new object[] { "example", 123 }))
                 .Verifiable();
 
             Create<IHaveMethodWithoutReturnTypeButWithParameters>().Foo("example", 123);
@@ -107,7 +109,7 @@ namespace UniversalAdapter.Tests
                 .GetMethod(nameof(IHaveMethodWithReturnTypeAndParameters.Foo));
 
             Mock
-                .Setup(m => m.Method(method, new object[] { "example", 123 }))
+                .Setup(m => m.MethodValue<string>(method, new object[] { "example", 123 }))
                 .Returns("expected");
 
             var adapter = Create<IHaveMethodWithReturnTypeAndParameters>();
@@ -123,7 +125,7 @@ namespace UniversalAdapter.Tests
                 .GetMethod(nameof(IHaveMethodWithGenericTypeReturnTypeAndParameters.Foo));
 
             Mock
-                .Setup(m => m.Method(method, new object[] { "example" }))
+                .Setup(m => m.MethodValue<string>(method, new object[] { "example" }))
                 .Returns("expected");
 
             var adapter = Create<IHaveMethodWithGenericTypeReturnTypeAndParameters>();
@@ -143,7 +145,7 @@ namespace UniversalAdapter.Tests
                 .GetMethod(nameof(IHaveGenericTypeAndMethodWithReturnTypeAndParameters<int>.Foo));
 
             Mock
-                .Setup(m => m.Method(method, new object[] { 123, "example" }))
+                .Setup(m => m.MethodValue<int>(method, new object[] { 123, "example" }))
                 .Returns(456);
 
             var adapter = Create<IHaveGenericTypeAndMethodWithReturnTypeAndParameters<int>>();
@@ -174,7 +176,7 @@ namespace UniversalAdapter.Tests
             { Foo = "example;" };
             var result = new List<int> { 1, 2, 3 };
             Mock
-                .Setup(m => m.Method(method, new object[] { x }))
+                .Setup(m => m.MethodValue<List<int>>(method, new object[] { x }))
                 .Returns(result);
 
             var adapter =
@@ -204,6 +206,74 @@ namespace UniversalAdapter.Tests
 
             adapter2.GetType().Should().NotBe(adapter3.GetType());
             adapter3.GetType().Should().NotBe(adapter4.GetType());
+        }
+        
+        public interface ISimpleAsyncMember
+        {
+            Task Foo();
+        }
+        [Fact]
+        public async Task ShouldCallTheAsyncOverloadForATask()
+        {
+            var method = typeof(ISimpleAsyncMember)
+                .GetMethod(nameof(ISimpleAsyncMember.Foo));
+
+            Mock
+                .Setup(m => m.MethodVoidAsync(method, new object[] { }))
+                .Returns(Task.CompletedTask)
+                .Verifiable();
+
+            var adapter = Create<ISimpleAsyncMember>();
+
+            await adapter.Foo();
+            
+            Mock.Verify();
+        }
+        
+        public interface IValueAsyncMember
+        {
+            Task<string> Foo();
+        }
+        [Fact]
+        public async Task ShouldCallTheAsyncOverloadForATaskWithReturnValue()
+        {
+            var method = typeof(IValueAsyncMember)
+                .GetMethod(nameof(IValueAsyncMember.Foo));
+
+            Mock
+                .Setup(m => m.MethodValueAsync<string>(method, new object[] { }))
+                .Returns(Task.FromResult("example"))
+                .Verifiable();
+
+            var adapter = Create<IValueAsyncMember>();
+
+            var value = await adapter.Foo();
+            
+            Mock.Verify();
+            value.Should().Be("example");
+        }
+        
+        public interface IComplexValueAsyncMember
+        {
+            Task<TOut> Foo<TIn, TOut>(TIn input);
+        }
+        [Fact]
+        public async Task ShouldCallTheAsyncOverloadForATaskWithComplexReturnValue()
+        {
+            var method = typeof(IComplexValueAsyncMember)
+                .GetMethod(nameof(IComplexValueAsyncMember.Foo));
+
+            Mock
+                .Setup(m => m.MethodValueAsync<List<int>>(method, new object[] { "example" }))
+                .Returns(Task.FromResult(new List<int>{1,2,3}))
+                .Verifiable();
+
+            var adapter = Create<IComplexValueAsyncMember>();
+
+            var value = await adapter.Foo<string, List<int>>("example");
+            
+            Mock.Verify();
+            value.Should().BeEquivalentTo(new List<int>{1,2,3});
         }
     }
 }
